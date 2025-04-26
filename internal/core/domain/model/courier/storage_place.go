@@ -40,7 +40,7 @@ func (s *StoragePlace) CanStore(amount int) bool {
 	if amount <= 0 {
 		return false
 	}
-	return s.totalVolume >= amount && *s.orderID == uuid.Nil
+	return s.totalVolume >= amount && !s.isOccupied()
 }
 
 func (s *StoragePlace) Store(orderID uuid.UUID, amount int) error {
