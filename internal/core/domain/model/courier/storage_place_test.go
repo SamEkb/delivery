@@ -191,6 +191,14 @@ func TestStoragePlace_Equals(t *testing.T) {
 			},
 			expectedResult: false,
 		},
+		"nil": {
+			setupTestObject: func() (*StoragePlace, *StoragePlace) {
+				s1, _ := NewStoragePlace("storage place", 10)
+				s1.id = sharedID
+				return s1, nil
+			},
+			expectedResult: false,
+		},
 	}
 
 	for name, tc := range tests {

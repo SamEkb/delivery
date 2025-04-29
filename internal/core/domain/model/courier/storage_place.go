@@ -32,7 +32,7 @@ func NewStoragePlace(name string, totalVolume int) (*StoragePlace, error) {
 		id:          uuid.New(),
 		name:        name,
 		totalVolume: totalVolume,
-		orderID:     &uuid.Nil,
+		orderID:     nil,
 	}, nil
 }
 
@@ -71,10 +71,13 @@ func (s *StoragePlace) Clear(orderID uuid.UUID) error {
 }
 
 func (s *StoragePlace) isOccupied() bool {
-	return *s.orderID != uuid.Nil
+	return s.orderID != nil
 }
 
 func (s *StoragePlace) Equals(other *StoragePlace) bool {
+	if other == nil {
+		return false
+	}
 	return s.id == other.id
 }
 
