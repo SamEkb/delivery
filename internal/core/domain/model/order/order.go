@@ -10,7 +10,7 @@ import (
 var ErrInvalidOrderId = errors.New("order id must not be empty")
 var ErrInvalidOrderVolume = errors.New("volume order should be greater than zero")
 var ErrInvalidCourierId = errors.New("courier id must not be empty")
-var ErrCourierDidNotAssign = errors.New("cant complete the order, courier did nit assigned")
+var ErrCourierWasNotAssign = errors.New("can't complete the order, courier was not assigned")
 
 type Order struct {
 	id        uuid.UUID
@@ -51,7 +51,7 @@ func (o *Order) Assign(courierId *uuid.UUID) error {
 
 func (o *Order) Complete() error {
 	if o.courierID == nil {
-		return ErrCourierDidNotAssign
+		return ErrCourierWasNotAssign
 	}
 
 	o.status = completed

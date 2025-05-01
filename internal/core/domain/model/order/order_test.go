@@ -127,7 +127,7 @@ func TestOrder_Complete(t *testing.T) {
 			courierId: nil,
 			status:    created,
 			wantErr:   true,
-			err:       ErrCourierDidNotAssign,
+			err:       ErrCourierWasNotAssign,
 		},
 	}
 
