@@ -57,7 +57,7 @@ func TestNewOrder(t *testing.T) {
 				assert.Equal(t, tc.orderID, order.ID())
 				assert.Equal(t, tc.location, order.Location())
 				assert.Equal(t, tc.volume, order.Volume())
-				assert.Equal(t, created, order.Status())
+				assert.Equal(t, Created, order.Status())
 				assert.Nil(t, order.CourierID())
 			}
 		})
@@ -74,13 +74,13 @@ func TestOrder_Assign(t *testing.T) {
 	}{
 		"valid assignation": {
 			courierId: &validCourierID,
-			status:    assigned,
+			status:    Assigned,
 			wantErr:   false,
 			err:       nil,
 		},
 		"invalid courierID": {
 			courierId: nil,
-			status:    created,
+			status:    Created,
 			wantErr:   true,
 			err:       ErrInvalidCourierId,
 		},
@@ -119,13 +119,13 @@ func TestOrder_Complete(t *testing.T) {
 	}{
 		"valid completion": {
 			courierId: &validCourierId,
-			status:    completed,
+			status:    Completed,
 			wantErr:   false,
 			err:       nil,
 		},
 		"courier didn't assign": {
 			courierId: nil,
-			status:    created,
+			status:    Created,
 			wantErr:   true,
 			err:       ErrCourierWasNotAssign,
 		},

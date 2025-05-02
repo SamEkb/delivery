@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrInvalidOrderId = errors.New("order id must not be empty")
+var ErrInvalidOrderId = errors.New("order id must not be Empty")
 var ErrInvalidOrderVolume = errors.New("volume order should be greater than zero")
-var ErrInvalidCourierId = errors.New("courier id must not be empty")
-var ErrCourierWasNotAssign = errors.New("can't complete the order, courier was not assigned")
+var ErrInvalidCourierId = errors.New("courier id must not be Empty")
+var ErrCourierWasNotAssign = errors.New("can't complete the order, courier was not Assigned")
 
 type Order struct {
 	id        uuid.UUID
@@ -34,7 +34,7 @@ func NewOrder(orderID uuid.UUID, location kernel.Location, volume int) (*Order, 
 		courierID: nil,
 		location:  location,
 		volume:    volume,
-		status:    created,
+		status:    Created,
 	}, nil
 }
 
@@ -44,7 +44,7 @@ func (o *Order) Assign(courierId *uuid.UUID) error {
 	}
 
 	o.courierID = courierId
-	o.status = assigned
+	o.status = Assigned
 
 	return nil
 }
@@ -54,7 +54,7 @@ func (o *Order) Complete() error {
 		return ErrCourierWasNotAssign
 	}
 
-	o.status = completed
+	o.status = Completed
 
 	return nil
 }

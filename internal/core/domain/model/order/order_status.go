@@ -3,10 +3,10 @@ package order
 type Status string
 
 const (
-	empty     Status = ""
-	created   Status = "Created"
-	assigned  Status = "Assigned"
-	completed Status = "Completed"
+	Empty     Status = ""
+	Created   Status = "Created"
+	Assigned  Status = "Assigned"
+	Completed Status = "Completed"
 )
 
 func (s Status) equals(other Status) bool {
@@ -14,7 +14,7 @@ func (s Status) equals(other Status) bool {
 }
 
 func (s Status) isEmpty() bool {
-	return s == empty
+	return s == Empty
 }
 
 func (s Status) String() string {
