@@ -217,6 +217,95 @@ func TestCourier_CompleteOrder(t *testing.T) {
 	}
 }
 
+func TestCourier_CalculateTimeToLocation(t *testing.T) {
+	startLocation := mustCreateLocation(1, 1)
+	courier, err := NewCourier("courier12", 2, startLocation)
+	assert.NoError(t, err)
+	assert.NotNil(t, courier)
+
+	endLocation := mustCreateLocation(3, 3)
+
+	time := courier.CalculateTimeToLocation(endLocation)
+	assert.NotNil(t, time)
+}
+
+func TestCourier_Move(t *testing.T) {
+	tests := map[string]struct {
+		initialX     int
+		initialY     int
+		courierSpeed int
+		targetX      int
+		targetY      int
+		expectedX    int
+		expectedY    int
+		wantErr      bool
+	}{
+		"move within speed limit": {
+			initialX:     3,
+			initialY:     3,
+			courierSpeed: 5,
+			targetX:      6,
+			targetY:      5,
+			expectedX:    6,
+			expectedY:    5,
+			wantErr:      false,
+		},
+		"move exceeding speed limit on both axes": {
+			initialX:     2,
+			initialY:     2,
+			courierSpeed: 3,
+			targetX:      10,
+			targetY:      10,
+			expectedX:    5,
+			expectedY:    2,
+			wantErr:      false,
+		},
+		"move exceeding speed limit on Y axis": {
+			initialX:     2,
+			initialY:     2,
+			courierSpeed: 5,
+			targetX:      4,
+			targetY:      10,
+			expectedX:    4,
+			expectedY:    5,
+			wantErr:      false,
+		},
+		"no movement needed": {
+			initialX:     5,
+			initialY:     5,
+			courierSpeed: 10,
+			targetX:      5,
+			targetY:      5,
+			expectedX:    5,
+			expectedY:    5,
+			wantErr:      false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			initialLocation, err := kernel.NewLocation(tc.initialX, tc.initialY)
+			assert.NoError(t, err)
+
+			courier, err := NewCourier("test-courier", tc.courierSpeed, initialLocation)
+			assert.NoError(t, err)
+
+			targetLocation, err := kernel.NewLocation(tc.targetX, tc.targetY)
+			assert.NoError(t, err)
+
+			err = courier.Move(targetLocation)
+
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedX, courier.location.X())
+				assert.Equal(t, tc.expectedY, courier.location.Y())
+			}
+		})
+	}
+}
+
 func mustCreateOrder(orderID uuid.UUID) *order.Order {
 	location := mustCreateLocation(1, 1)
 	ord, err := order.NewOrder(orderID, location, 1)
