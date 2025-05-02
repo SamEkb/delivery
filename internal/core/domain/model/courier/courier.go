@@ -133,7 +133,7 @@ func (c *Courier) CalculateTimeToLocation(target kernel.Location) float64 {
 
 	distance := target.DistanceTo(courierLocation)
 
-	return float64(distance) * float64(courierSpeed)
+	return float64(distance) / float64(courierSpeed)
 }
 
 func (c *Courier) Move(target kernel.Location) error {
