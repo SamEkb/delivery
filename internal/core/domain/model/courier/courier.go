@@ -174,3 +174,19 @@ func (c *Courier) findStoragePlaceByOrderID(orderID uuid.UUID) (*StoragePlace, e
 func (c *Courier) ID() uuid.UUID {
 	return c.id
 }
+
+func (c *Courier) Name() string {
+	return c.name
+}
+
+func (c *Courier) Speed() int {
+	return c.speed
+}
+
+func (c *Courier) Location() kernel.Location {
+	return c.location
+}
+
+func (c *Courier) StoragePlaces() []*StoragePlace {
+	return c.storagePlaces
+}
