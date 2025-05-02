@@ -16,6 +16,7 @@ func TestDispatchService_Dispatch(t *testing.T) {
 	courier2 := couriers[1]
 
 	validOrder := mustCreateOrder(uuid.New())
+	validOrder2 := mustCreateOrder(uuid.New())
 	invalidOrder := mustCreateOrder(uuid.New())
 	courierID := courier1.ID()
 	err := invalidOrder.Assign(&courierID)
@@ -50,14 +51,14 @@ func TestDispatchService_Dispatch(t *testing.T) {
 			err:        ErrInvalidOrder,
 		},
 		"invalid couriers nil": {
-			orderParam: validOrder,
+			orderParam: validOrder2,
 			couriers:   nil,
 			result:     nil,
 			wantErr:    true,
 			err:        ErrInvalidCouriers,
 		},
 		"no suitable couriers": {
-			orderParam: validOrder,
+			orderParam: validOrder2,
 			couriers:   createOccupiedCouriers(),
 			result:     nil,
 			wantErr:    true,

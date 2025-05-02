@@ -27,7 +27,7 @@ func (d *dispatchService) Dispatch(orderParam *order.Order, couriers []*courier.
 		return nil, ErrInvalidOrder
 	}
 
-	if len(couriers) == 0 {
+	if couriers == nil || len(couriers) == 0 {
 		return nil, ErrInvalidCouriers
 	}
 
