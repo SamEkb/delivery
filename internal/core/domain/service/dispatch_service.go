@@ -7,7 +7,7 @@ import (
 	"github.com/delivery/internal/core/domain/model/order"
 )
 
-var ErrInvalidOrder = errors.New("order must not be nil and must be in Completed status")
+var ErrInvalidOrder = errors.New("order must not be nil and must be in Created status")
 var ErrInvalidCouriers = errors.New("couriers must not be nil")
 var ErrCourierNotFound = errors.New("courier not found")
 
@@ -31,21 +31,9 @@ func (d *dispatchService) Dispatch(orderParam *order.Order, couriers []*courier.
 		return nil, ErrInvalidCouriers
 	}
 
-	var minTime float64
-	var bestCourier *courier.Courier
-
-	for _, c := range couriers {
-		currentTime := c.CalculateTimeToLocation(orderParam.Location())
-
-		canTake, err := c.CanTakeOrder(orderParam)
-		if err != nil {
-			return nil, err
-		}
-
-		if canTake && (currentTime < minTime || minTime == 0) {
-			minTime = currentTime
-			bestCourier = c
-		}
+	bestCourier, err := findNearestSuitableCourier(orderParam, couriers)
+	if err != nil {
+		return nil, err
 	}
 
 	if bestCourier == nil {
@@ -63,4 +51,23 @@ func (d *dispatchService) Dispatch(orderParam *order.Order, couriers []*courier.
 	}
 
 	return bestCourier, nil
+}
+
+func findNearestSuitableCourier(orderParam *order.Order, couriers []*courier.Courier) (*courier.Courier, error) {
+	var minTime float64
+	var suitableCourier *courier.Courier
+	for _, c := range couriers {
+		currentTime := c.CalculateTimeToLocation(orderParam.Location())
+
+		canTake, err := c.CanTakeOrder(orderParam)
+		if err != nil {
+			return nil, err
+		}
+
+		if canTake && (currentTime < minTime || minTime == 0) {
+			minTime = currentTime
+			suitableCourier = c
+		}
+	}
+	return suitableCourier, nil
 }
