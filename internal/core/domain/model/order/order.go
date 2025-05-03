@@ -38,6 +38,17 @@ func NewOrder(orderID uuid.UUID, location kernel.Location, volume int) (*Order, 
 	}, nil
 }
 
+// RestoreOrder must be used ONLY in a repository layer for mapping
+func RestoreOrder(orderID uuid.UUID, courierID *uuid.UUID, location kernel.Location, volume int, status Status) *Order {
+	return &Order{
+		id:        orderID,
+		courierID: courierID,
+		location:  location,
+		volume:    volume,
+		status:    status,
+	}
+}
+
 func (o *Order) Assign(courierId *uuid.UUID) error {
 	if courierId == nil {
 		return ErrInvalidCourierId

@@ -41,6 +41,16 @@ func NewCourier(name string, speed int, location kernel.Location) (*Courier, err
 	}, nil
 }
 
+func RestoreCourier(id uuid.UUID, name string, speed int, location kernel.Location, storagePlaces []*StoragePlace) *Courier {
+	return &Courier{
+		id:            id,
+		name:          name,
+		speed:         speed,
+		location:      location,
+		storagePlaces: storagePlaces,
+	}
+}
+
 func (c *Courier) Equals(other *Courier) bool {
 	if other == nil {
 		return false
