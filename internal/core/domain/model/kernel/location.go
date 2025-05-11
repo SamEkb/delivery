@@ -57,17 +57,3 @@ func (l Location) X() int {
 func (l Location) Y() int {
 	return l.y
 }
-
-func MaxLocation() Location {
-	return Location{
-		x: maxX,
-		y: maxY,
-	}
-}
-
-func MinLocation() Location {
-	return Location{
-		x: minX,
-		y: minY,
-	}
-}
