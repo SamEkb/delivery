@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/labstack/gommon/log"
-
+	"github.com/delivery/internal/adapters/out/postgres/courierrepo"
+	"github.com/delivery/internal/adapters/out/postgres/orderrepo"
 	"github.com/delivery/internal/core/ports"
 	"github.com/delivery/internal/pkg/ddd"
+	"github.com/labstack/gommon/log"
 	"gorm.io/gorm"
 )
 
@@ -32,6 +33,18 @@ func NewUnitOfWork(db *gorm.DB) (*UnitOfWork, error) {
 	uow := &UnitOfWork{
 		db: db,
 	}
+
+	courierRepo, err := courierrepo.NewRepository(uow)
+	if err != nil {
+		return nil, err
+	}
+	uow.courierRepository = courierRepo
+
+	orderRepo, err := orderrepo.NewRepository(uow)
+	if err != nil {
+		return nil, err
+	}
+	uow.orderRepository = orderRepo
 
 	return uow, nil
 }
