@@ -36,6 +36,15 @@ func NewStoragePlace(name string, totalVolume int) (*StoragePlace, error) {
 	}, nil
 }
 
+func RestoreStoragePlace(id uuid.UUID, name string, totalVolume int, orderID *uuid.UUID) *StoragePlace {
+	return &StoragePlace{
+		id:          id,
+		name:        name,
+		totalVolume: totalVolume,
+		orderID:     orderID,
+	}
+}
+
 func (s *StoragePlace) CanStore(amount int) bool {
 	if amount <= 0 {
 		return false
