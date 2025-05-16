@@ -15,8 +15,3 @@ type CourierResponse struct {
 func (CourierResponse) TableName() string {
 	return "couriers"
 }
-
-type LocationResponse struct {
-	X int
-	Y int
-}
