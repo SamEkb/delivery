@@ -2,17 +2,14 @@ package orderrepo
 
 import (
 	"context"
-	"errors"
 
 	"github.com/delivery/internal/core/domain/model/order"
 	"github.com/delivery/internal/core/ports"
+	"github.com/delivery/internal/pkg/errs"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
-
-var ErrInvalidUOWValue = errors.New("unit of work must not be nil")
-var ErrNoRecordsFound = errors.New("no records found")
 
 var _ ports.OrderRepository = &Repository{}
 
@@ -22,7 +19,7 @@ type Repository struct {
 
 func NewRepository(uow ports.UnitOfWork) (*Repository, error) {
 	if uow == nil {
-		return nil, ErrInvalidUOWValue
+		return nil, errs.NewValueIsRequiredError("unit of work")
 	}
 	return &Repository{
 		uow: uow,
@@ -43,13 +40,13 @@ func (r *Repository) Add(ctx context.Context, order *order.Order) error {
 	tx := r.uow.Tx()
 
 	if err := tx.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Create(dto).Error; err != nil {
-		return err
+		return errs.NewDatabaseError("create", "order", err)
 	}
 
 	// if inside other tx we not fix this one
 	if !isInTx {
 		if err := r.uow.Commit(ctx); err != nil {
-			return err
+			return errs.NewDatabaseError("commit", "transaction", err)
 		}
 	}
 
@@ -70,13 +67,13 @@ func (r *Repository) Update(ctx context.Context, order *order.Order) error {
 	tx := r.uow.Tx()
 
 	if err := tx.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Save(&dto).Error; err != nil {
-		return err
+		return errs.NewDatabaseError("update", "order", err)
 	}
 
 	// if inside other tx we not fix this one
 	if !isInTx {
 		if err := r.uow.Commit(ctx); err != nil {
-			return err
+			return errs.NewDatabaseError("commit", "transaction", err)
 		}
 	}
 
@@ -90,8 +87,13 @@ func (r *Repository) Get(ctx context.Context, orderID uuid.UUID) (*order.Order, 
 	result := tx.WithContext(ctx).
 		Preload(clause.Associations).
 		Find(&dto, orderID)
+
+	if result.Error != nil {
+		return nil, errs.NewDatabaseError("get", "order", result.Error)
+	}
+
 	if result.RowsAffected == 0 {
-		return nil, nil
+		return nil, errs.NewNotFoundError("order", orderID.String())
 	}
 
 	aggregate := DtoToDomain(dto)
@@ -106,14 +108,34 @@ func (r *Repository) GetFirstInStatusCreate(ctx context.Context) (*order.Order, 
 		First(&dto, "status = ?", order.Created)
 
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, ErrNoRecordsFound
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, errs.NewNotFoundError("order", "in created status")
 		}
-		return nil, result.Error
+		return nil, errs.NewDatabaseError("get", "order", result.Error)
 	}
 
 	aggregate := DtoToDomain(dto)
 	return aggregate, nil
+}
+
+func (r *Repository) GetAllInStatusCreate(ctx context.Context) ([]*order.Order, error) {
+	var dtos []OrderDTO
+
+	tx := r.getTxOrDb()
+	result := tx.WithContext(ctx).
+		Preload(clause.Associations).
+		Find(&dtos, "status = ?", order.Created)
+
+	if result.Error != nil {
+		return nil, errs.NewDatabaseError("get", "orders", result.Error)
+	}
+
+	aggregates := make([]*order.Order, len(dtos))
+	for i, dto := range dtos {
+		aggregates[i] = DtoToDomain(dto)
+	}
+
+	return aggregates, nil
 }
 
 func (r *Repository) GetAllInStatusAssigned(ctx context.Context) ([]*order.Order, error) {
@@ -123,11 +145,9 @@ func (r *Repository) GetAllInStatusAssigned(ctx context.Context) ([]*order.Order
 	result := tx.WithContext(ctx).
 		Preload(clause.Associations).
 		Find(&dtos, "status = ?", order.Assigned)
+
 	if result.Error != nil {
-		return nil, result.Error
-	}
-	if result.RowsAffected == 0 {
-		return nil, ErrNoRecordsFound
+		return nil, errs.NewDatabaseError("get", "orders", result.Error)
 	}
 
 	aggregates := make([]*order.Order, len(dtos))

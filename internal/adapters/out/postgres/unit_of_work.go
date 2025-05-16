@@ -2,18 +2,15 @@ package postgres
 
 import (
 	"context"
-	"errors"
 
 	"github.com/delivery/internal/adapters/out/postgres/courierrepo"
 	"github.com/delivery/internal/adapters/out/postgres/orderrepo"
 	"github.com/delivery/internal/core/ports"
 	"github.com/delivery/internal/pkg/ddd"
+	"github.com/delivery/internal/pkg/errs"
 	"github.com/labstack/gommon/log"
 	"gorm.io/gorm"
 )
-
-var ErrDBMustBeNotNil = errors.New("database must be not nil")
-var ErrInvalidTx = errors.New("cant commit transaction must be not nil")
 
 var _ ports.UnitOfWork = &UnitOfWork{}
 
@@ -27,7 +24,7 @@ type UnitOfWork struct {
 
 func NewUnitOfWork(db *gorm.DB) (*UnitOfWork, error) {
 	if db == nil {
-		return nil, ErrDBMustBeNotNil
+		return nil, errs.NewValueIsRequiredError("database")
 	}
 
 	uow := &UnitOfWork{
@@ -71,21 +68,22 @@ func (uow *UnitOfWork) Begin(ctx context.Context) {
 
 func (uow *UnitOfWork) Commit(ctx context.Context) error {
 	if uow.tx == nil {
-		return ErrInvalidTx
+		return errs.NewBusinessError("commit transaction", "cannot commit: transaction is nil")
 	}
 
 	commited := false
 	defer func() {
 		if !commited {
 			if err := uow.tx.Rollback().Error; err != nil {
-				panic(err)
+				panic(errs.NewDatabaseError("rollback", "transaction", err))
 			}
 			uow.clearTx()
 		}
 	}()
 
-	if err := uow.tx.WithContext(ctx).Commit().Error; err != nil && !errors.Is(err, gorm.ErrInvalidTransaction) {
+	if err := uow.tx.WithContext(ctx).Commit().Error; err != nil && err != gorm.ErrInvalidTransaction {
 		log.Error(err)
+		return errs.NewDatabaseError("commit", "transaction", err)
 	}
 
 	commited = true
