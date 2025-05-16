@@ -2,17 +2,14 @@ package courierrepo
 
 import (
 	"context"
-	"errors"
 
 	"github.com/delivery/internal/core/domain/model/courier"
 	"github.com/delivery/internal/core/ports"
+	"github.com/delivery/internal/pkg/errs"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
-
-var ErrInvalidUOWValue = errors.New("unit of work must not be nil")
-var ErrNoRecordsFound = errors.New("no records found")
 
 var _ ports.CourierRepository = &Repository{}
 
@@ -22,7 +19,7 @@ type Repository struct {
 
 func NewRepository(uow ports.UnitOfWork) (*Repository, error) {
 	if uow == nil {
-		return nil, ErrInvalidUOWValue
+		return nil, errs.NewValueIsRequiredError("unit of work")
 	}
 	return &Repository{
 		uow: uow,
@@ -43,13 +40,13 @@ func (r *Repository) Add(ctx context.Context, courier *courier.Courier) error {
 	tx := r.uow.Tx()
 
 	if err := tx.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Create(dto).Error; err != nil {
-		return err
+		return errs.NewDatabaseError("create", "courier", err)
 	}
 
 	// if inside other tx we not fix this one
 	if !isInTx {
 		if err := r.uow.Commit(ctx); err != nil {
-			return err
+			return errs.NewDatabaseError("commit", "transaction", err)
 		}
 	}
 
@@ -70,13 +67,13 @@ func (r *Repository) Update(ctx context.Context, courier *courier.Courier) error
 	tx := r.uow.Tx()
 
 	if err := tx.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Save(&dto).Error; err != nil {
-		return err
+		return errs.NewDatabaseError("update", "courier", err)
 	}
 
 	// if inside other tx we not fix this one
 	if !isInTx {
 		if err := r.uow.Commit(ctx); err != nil {
-			return err
+			return errs.NewDatabaseError("commit", "transaction", err)
 		}
 	}
 
@@ -90,12 +87,37 @@ func (r *Repository) Get(ctx context.Context, courierID uuid.UUID) (*courier.Cou
 	result := tx.WithContext(ctx).
 		Preload(clause.Associations).
 		Find(&dto, courierID)
+
+	if result.Error != nil {
+		return nil, errs.NewDatabaseError("get", "courier", result.Error)
+	}
+
 	if result.RowsAffected == 0 {
-		return nil, nil
+		return nil, errs.NewNotFoundError("courier", courierID.String())
 	}
 
 	aggregate := DtoToDomain(dto)
 	return aggregate, nil
+}
+
+func (r *Repository) GetAll(ctx context.Context) ([]*courier.Courier, error) {
+	var dtos []CourierDto
+
+	tx := r.getTxOrDb()
+	result := tx.WithContext(ctx).
+		Preload(clause.Associations).
+		Find(&dtos)
+
+	if result.Error != nil {
+		return nil, errs.NewDatabaseError("get", "couriers", result.Error)
+	}
+
+	couriers := make([]*courier.Courier, len(dtos))
+	for i, dto := range dtos {
+		couriers[i] = DtoToDomain(dto)
+	}
+
+	return couriers, nil
 }
 
 func (r *Repository) GetAllAvailable(ctx context.Context) ([]*courier.Courier, error) {
@@ -113,10 +135,7 @@ func (r *Repository) GetAllAvailable(ctx context.Context) ([]*courier.Courier, e
 		Find(&dtos)
 
 	if result.Error != nil {
-		return nil, result.Error
-	}
-	if result.RowsAffected == 0 {
-		return nil, ErrNoRecordsFound
+		return nil, errs.NewDatabaseError("get", "available couriers", result.Error)
 	}
 
 	couriers := make([]*courier.Courier, len(dtos))

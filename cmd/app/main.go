@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,13 +10,12 @@ import (
 	"github.com/delivery/cmd"
 	"github.com/delivery/internal/adapters/out/postgres/courierrepo"
 	"github.com/delivery/internal/adapters/out/postgres/orderrepo"
+	"github.com/delivery/internal/pkg/errs"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-var ErrInvalidConfigValue = errors.New("invalid value")
 
 func main() {
 	config := getConfigs()
@@ -96,22 +94,22 @@ func crateDbIfNotExists(host string, port string, user string,
 func makeConnectionString(host string, port string, user string,
 	password string, dbName string, sslMode string) (string, error) {
 	if host == "" {
-		return "", ErrInvalidConfigValue
+		return "", errs.NewValueIsRequiredError("host")
 	}
 	if port == "" {
-		return "", ErrInvalidConfigValue
+		return "", errs.NewValueIsRequiredError("port")
 	}
 	if user == "" {
-		return "", ErrInvalidConfigValue
+		return "", errs.NewValueIsRequiredError("user")
 	}
 	if password == "" {
-		return "", ErrInvalidConfigValue
+		return "", errs.NewValueIsRequiredError("password")
 	}
 	if dbName == "" {
-		return "", ErrInvalidConfigValue
+		return "", errs.NewValueIsRequiredError("dbName")
 	}
 	if sslMode == "" {
-		return "", ErrInvalidConfigValue
+		return "", errs.NewValueIsRequiredError("sslMode")
 	}
 	return fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=%v",
 		host,

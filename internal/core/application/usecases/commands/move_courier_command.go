@@ -9,3 +9,7 @@ func NewMoveCourierCommand() (*MoveCourierCommand, error) {
 		isValid: true,
 	}, nil
 }
+
+func (c *MoveCourierCommand) IsValid() bool {
+	return c.isValid
+}

@@ -2,7 +2,8 @@ package queries
 
 import (
 	"github.com/delivery/internal/core/domain/model/order"
-	"gorm.io/gorm"
+	"github.com/delivery/internal/core/ports"
+	"github.com/delivery/internal/pkg/errs"
 )
 
 type GetAllUncompletedOrdersHandler interface {
@@ -10,29 +11,29 @@ type GetAllUncompletedOrdersHandler interface {
 }
 
 type getAllUncompletedOrdersHandler struct {
-	db *gorm.DB
+	uow ports.UnitOfWork
 }
 
-func NewGetAllUncompletedOrdersHandler(db *gorm.DB) (GetAllUncompletedOrdersHandler, error) {
-	if db == nil {
-		return nil, ErrInvalidDBValue
+func NewGetAllUncompletedOrdersHandler(uow ports.UnitOfWork) (GetAllUncompletedOrdersHandler, error) {
+	if uow == nil {
+		return nil, errs.NewValueIsRequiredError("unit of work")
 	}
 	return &getAllUncompletedOrdersHandler{
-		db: db,
+		uow: uow,
 	}, nil
 }
 
 func (h *getAllUncompletedOrdersHandler) Handle(query GetAllUncompletedOrdersQuery) (GetAllUncompletedOrdersResponse, error) {
 	if !query.IsValid() {
-		return GetAllUncompletedOrdersResponse{}, ErrInvalidCommand
+		return GetAllUncompletedOrdersResponse{}, errs.NewValidationError("query", "get all uncompleted orders query is invalid")
 	}
 
 	var orders []OrderResponse
-	result := h.db.Where("status IN ?", []string{order.Created.String(), order.Assigned.String()}).
+	result := h.uow.Db().Where("status IN ?", []string{order.Created.String(), order.Assigned.String()}).
 		Find(&orders)
 
 	if result.Error != nil {
-		return GetAllUncompletedOrdersResponse{}, result.Error
+		return GetAllUncompletedOrdersResponse{}, errs.NewDatabaseError("get", "orders", result.Error)
 	}
 
 	return GetAllUncompletedOrdersResponse{

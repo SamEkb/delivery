@@ -1,38 +1,34 @@
 package queries
 
 import (
-	"errors"
-
-	"gorm.io/gorm"
+	"github.com/delivery/internal/core/ports"
+	"github.com/delivery/internal/pkg/errs"
 )
-
-var ErrInvalidDBValue = errors.New("database must not be nil")
-var ErrInvalidCommand = errors.New("command is invalid")
 
 type GetAllCouriersHandler interface {
 	Handle(query GetAllCouriersQuery) (GetAllCouriersResponse, error)
 }
 
 type getAllCouriersHandler struct {
-	db *gorm.DB
+	uow ports.UnitOfWork
 }
 
-func NewGetAllCouriersHandler(db *gorm.DB) (GetAllCouriersHandler, error) {
-	if db == nil {
-		return nil, ErrInvalidDBValue
+func NewGetAllCouriersHandler(uow ports.UnitOfWork) (GetAllCouriersHandler, error) {
+	if uow == nil {
+		return nil, errs.NewValueIsRequiredError("unit of work")
 	}
 	return &getAllCouriersHandler{
-		db: db,
+		uow: uow,
 	}, nil
 }
 
 func (h *getAllCouriersHandler) Handle(query GetAllCouriersQuery) (GetAllCouriersResponse, error) {
 	if !query.IsValid() {
-		return GetAllCouriersResponse{}, ErrInvalidCommand
+		return GetAllCouriersResponse{}, errs.NewValidationError("query", "get all couriers query is invalid")
 	}
 	var couriers []CourierResponse
-	if err := h.db.Find(&couriers).Error; err != nil {
-		return GetAllCouriersResponse{}, err
+	if err := h.uow.Db().Find(&couriers).Error; err != nil {
+		return GetAllCouriersResponse{}, errs.NewDatabaseError("get", "couriers", err)
 	}
 
 	return GetAllCouriersResponse{
