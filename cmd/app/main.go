@@ -13,6 +13,7 @@ import (
 	"github.com/delivery/internal/pkg/errs"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
+	"github.com/robfig/cron/v3"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -45,6 +46,7 @@ func main() {
 		gormDb,
 	)
 
+	startCronJobs(compositionRoot)
 	startWebServer(compositionRoot, config.HttpPort)
 }
 
@@ -159,4 +161,18 @@ func startWebServer(_ cmd.CompositionRoot, port string) {
 
 	e.Logger.Fatal(e.Start(fmt.Sprintf("0.0.0.0:%s", port)))
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
+}
+
+func startCronJobs(compositionRoot cmd.CompositionRoot) {
+	c := cron.New()
+	_, err := c.AddJob("0 0/1 * * * ?", &compositionRoot.Jobs.AssignOrderJob)
+	if err != nil {
+		log.Fatalf("failed to add assign order job: %v", err)
+	}
+	_, err = c.AddJob("0 0/1 * * * ?", &compositionRoot.Jobs.MoveCourierJob)
+	if err != nil {
+		log.Fatalf("failed to add move courier job: %v", err)
+	}
+
+	c.Start()
 }
