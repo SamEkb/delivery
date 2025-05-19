@@ -33,7 +33,7 @@ func Test_CreateOrderHandler_Handle(t *testing.T) {
 	tests := map[string]struct {
 		args    args
 		wantErr bool
-		deps    func(t *testing.T) ports.UnitOfWork
+		deps    func(t *testing.T) (ports.UnitOfWork, ports.GeoServiceClient)
 	}{
 		"create success": {
 			args: args{
@@ -45,9 +45,10 @@ func Test_CreateOrderHandler_Handle(t *testing.T) {
 				}(),
 			},
 			wantErr: false,
-			deps: func(t *testing.T) ports.UnitOfWork {
+			deps: func(t *testing.T) (ports.UnitOfWork, ports.GeoServiceClient) {
 				uow := mocks.NewUnitOfWork(t)
 				orderRepo := mocks.NewOrderRepository(t)
+				geoClient := mocks.NewGeoServiceClient(t)
 
 				uow.EXPECT().OrderRepository().Return(orderRepo)
 
@@ -57,13 +58,18 @@ func Test_CreateOrderHandler_Handle(t *testing.T) {
 					})).
 					Return(nil, nil)
 
+				geoClient.EXPECT().GetLocation(ctx, "street").Return(
+					mustCreateLocation(1, 1),
+					nil,
+				)
+
 				orderRepo.EXPECT().
 					Add(ctx, mock.MatchedBy(func(o *order.Order) bool {
 						return o != nil
 					})).
 					Return(nil)
 
-				return uow
+				return uow, geoClient
 			},
 		},
 		"order already exists": {
@@ -75,10 +81,11 @@ func Test_CreateOrderHandler_Handle(t *testing.T) {
 					return cmd
 				}(),
 			},
-			wantErr: false,
-			deps: func(t *testing.T) ports.UnitOfWork {
+			wantErr: true,
+			deps: func(t *testing.T) (ports.UnitOfWork, ports.GeoServiceClient) {
 				uow := mocks.NewUnitOfWork(t)
 				orderRepo := mocks.NewOrderRepository(t)
+				geoClient := mocks.NewGeoServiceClient(t)
 
 				existingOrderID := uuid.New()
 				location := mustCreateLocation(1, 1)
@@ -92,7 +99,7 @@ func Test_CreateOrderHandler_Handle(t *testing.T) {
 					})).
 					Return(existingOrder, nil)
 
-				return uow
+				return uow, geoClient
 			},
 		},
 		"error adding order": {
@@ -105,9 +112,10 @@ func Test_CreateOrderHandler_Handle(t *testing.T) {
 				}(),
 			},
 			wantErr: true,
-			deps: func(t *testing.T) ports.UnitOfWork {
+			deps: func(t *testing.T) (ports.UnitOfWork, ports.GeoServiceClient) {
 				uow := mocks.NewUnitOfWork(t)
 				orderRepo := mocks.NewOrderRepository(t)
+				geoClient := mocks.NewGeoServiceClient(t)
 
 				uow.EXPECT().OrderRepository().Return(orderRepo)
 
@@ -115,19 +123,24 @@ func Test_CreateOrderHandler_Handle(t *testing.T) {
 					Get(ctx, mock.Anything).
 					Return(nil, nil)
 
+				geoClient.EXPECT().GetLocation(ctx, "street").Return(
+					mustCreateLocation(1, 1),
+					nil,
+				)
+
 				orderRepo.EXPECT().
 					Add(ctx, mock.Anything).
 					Return(errors.New("database error"))
 
-				return uow
+				return uow, geoClient
 			},
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			uow := tt.deps(t)
-			handler, err := NewAddCreateOrderHandler(uow)
+			uow, geo := tt.deps(t)
+			handler, err := NewAddCreateOrderHandler(uow, geo)
 			assert.NoError(t, err)
 
 			err = handler.Handle(tt.args.ctx, tt.args.command)
