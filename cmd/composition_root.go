@@ -49,7 +49,7 @@ type QueryHandlers struct {
 }
 
 type Servers struct {
-	httpServer *http.Server
+	HttpServer *http.Server
 }
 
 type Jobs struct {
@@ -154,7 +154,7 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 			MoveCourierJob: *moveCourierJob,
 		},
 		Servers: Servers{
-			httpServer: httpServer,
+			HttpServer: httpServer,
 		},
 	}
 }
