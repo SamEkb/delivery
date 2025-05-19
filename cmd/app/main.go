@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 
+	_ "github.com/lib/pq"
+
 	"github.com/delivery/cmd"
 	"github.com/delivery/internal/adapters/out/postgres/courierrepo"
 	"github.com/delivery/internal/adapters/out/postgres/orderrepo"
@@ -87,10 +89,10 @@ func crateDbIfNotExists(host string, port string, user string,
 	}
 	defer db.Close()
 
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
-	if err != nil {
-		log.Printf("Ошибка создания БД (возможно, уже существует): %v", err)
-	}
+	//_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
+	//if err != nil {
+	//	log.Printf("Ошибка создания БД (возможно, уже существует): %v", err)
+	//}
 }
 
 func makeConnectionString(host string, port string, user string,
@@ -164,12 +166,12 @@ func startWebServer(_ cmd.CompositionRoot, port string) {
 }
 
 func startCronJobs(compositionRoot cmd.CompositionRoot) {
-	c := cron.New()
-	_, err := c.AddJob("0 0/1 * * * ?", &compositionRoot.Jobs.AssignOrderJob)
+	c := cron.New(cron.WithSeconds())
+	_, err := c.AddJob("* * * * * *", &compositionRoot.Jobs.AssignOrderJob)
 	if err != nil {
 		log.Fatalf("failed to add assign order job: %v", err)
 	}
-	_, err = c.AddJob("0 0/1 * * * ?", &compositionRoot.Jobs.MoveCourierJob)
+	_, err = c.AddJob("* * * * * *", &compositionRoot.Jobs.MoveCourierJob)
 	if err != nil {
 		log.Fatalf("failed to add move courier job: %v", err)
 	}
