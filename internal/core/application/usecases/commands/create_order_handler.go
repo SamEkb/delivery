@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 
-	"github.com/delivery/internal/core/domain/model/kernel"
 	"github.com/delivery/internal/core/domain/model/order"
 	"github.com/delivery/internal/core/ports"
 	"github.com/delivery/internal/pkg/errs"
@@ -14,16 +13,21 @@ type CreateOrderHandler interface {
 }
 
 type addCreateOrderHandler struct {
-	uow ports.UnitOfWork
+	uow       ports.UnitOfWork
+	geoClient ports.GeoServiceClient
 }
 
-func NewAddCreateOrderHandler(uow ports.UnitOfWork) (CreateOrderHandler, error) {
+func NewAddCreateOrderHandler(uow ports.UnitOfWork, geoClient ports.GeoServiceClient) (CreateOrderHandler, error) {
 	if uow == nil {
 		return nil, errs.NewValueIsRequiredError("unit of work")
 	}
+	if geoClient == nil {
+		return nil, errs.NewValueIsRequiredError("geo service client")
+	}
 
 	return &addCreateOrderHandler{
-		uow: uow,
+		uow:       uow,
+		geoClient: geoClient,
 	}, nil
 }
 
@@ -40,7 +44,10 @@ func (h *addCreateOrderHandler) Handle(ctx context.Context, command *CreateOrder
 		return errs.NewConflictError("order", command.OrderID().String(), "order already exists")
 	}
 
-	location := kernel.CreateRandomLocation()
+	location, err := h.geoClient.GetLocation(ctx, command.Street())
+	if err != nil {
+		return errs.NewBusinessErrorWithCause("get location", "failed to get location from geo service", err)
+	}
 	newOrder, err := order.NewOrder(command.OrderID(), location, command.Volume())
 	if err != nil {
 		return errs.NewBusinessErrorWithCause("create order", "failed to create order domain object", err)

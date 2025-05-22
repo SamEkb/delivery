@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"log"
+	"time"
 
 	"github.com/delivery/internal/adapters/in/http"
 	"github.com/delivery/internal/adapters/in/jobs"
+	"github.com/delivery/internal/adapters/out/grpc/geo"
 	"github.com/delivery/internal/adapters/out/postgres"
 	"github.com/delivery/internal/core/application/usecases/commands"
 	"github.com/delivery/internal/core/application/usecases/queries"
@@ -47,7 +49,7 @@ type QueryHandlers struct {
 }
 
 type Servers struct {
-	httpServer *http.Server
+	HttpServer *http.Server
 }
 
 type Jobs struct {
@@ -68,8 +70,14 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 	orderRepository := unitOfWork.OrderRepository()
 	courierRepository := unitOfWork.CourierRepository()
 
+	// Clients
+	geoClient, err := geo.NewGeoClient(config.GeoServiceGrpcHost, 5*time.Second)
+	if err != nil {
+		log.Fatalf("failed to create geo service client: %v", err)
+	}
+
 	// Command Handlers
-	createOrderCommandHandler, err := commands.NewAddCreateOrderHandler(unitOfWork)
+	createOrderCommandHandler, err := commands.NewAddCreateOrderHandler(unitOfWork, geoClient)
 	if err != nil {
 		log.Fatalf("failed to create create order command handler: %v", err)
 	}
@@ -146,7 +154,7 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 			MoveCourierJob: *moveCourierJob,
 		},
 		Servers: Servers{
-			httpServer: httpServer,
+			HttpServer: httpServer,
 		},
 	}
 }

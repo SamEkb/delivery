@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/delivery/internal/generated/servers"
 	_ "github.com/lib/pq"
 
 	"github.com/delivery/cmd"
@@ -155,14 +156,16 @@ func mustAutoMigrate(db *gorm.DB) {
 
 }
 
-func startWebServer(_ cmd.CompositionRoot, port string) {
+func startWebServer(compositionRoot cmd.CompositionRoot, port string) {
 	e := echo.New()
+
 	e.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Healthy")
 	})
 
+	servers.RegisterHandlers(e, compositionRoot.Servers.HttpServer)
+
 	e.Logger.Fatal(e.Start(fmt.Sprintf("0.0.0.0:%s", port)))
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
 }
 
 func startCronJobs(compositionRoot cmd.CompositionRoot) {
