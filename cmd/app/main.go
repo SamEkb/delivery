@@ -50,7 +50,7 @@ func main() {
 	)
 
 	startKafkaConsumer(compositionRoot)
-	startCronJobs(compositionRoot)
+	//startCronJobs(compositionRoot)
 	startWebServer(compositionRoot, config.HttpPort)
 }
 
