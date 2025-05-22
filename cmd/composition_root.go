@@ -7,6 +7,7 @@ import (
 	"github.com/delivery/internal/adapters/in/http"
 	"github.com/delivery/internal/adapters/in/jobs"
 	"github.com/delivery/internal/adapters/out/grpc/geo"
+	"github.com/delivery/internal/adapters/out/kafka"
 	"github.com/delivery/internal/adapters/out/postgres"
 	"github.com/delivery/internal/core/application/usecases/commands"
 	"github.com/delivery/internal/core/application/usecases/queries"
@@ -24,6 +25,7 @@ type CompositionRoot struct {
 	QueryHandlers   QueryHandlers
 	Servers         Servers
 	Jobs            Jobs
+	KafkaConsumer   kafka.BasketConfirmedConsumer
 }
 
 type DomainServices struct {
@@ -119,6 +121,17 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 		log.Fatalf("failed to create move courier job: %v", err)
 	}
 
+	// Kafka Consumer
+	kafkaConsumer, err := kafka.NewConsumer(
+		[]string{config.KafkaHost},
+		config.KafkaBasketConfirmedTopic,
+		config.KafkaConsumerGroup,
+		createOrderCommandHandler,
+	)
+	if err != nil {
+		log.Fatalf("failed to create kafka consumer: %v", err)
+	}
+
 	// Servers
 	httpServer, err := http.NewServer(
 		assignOrderCommandHandler,
@@ -156,5 +169,6 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 		Servers: Servers{
 			HttpServer: httpServer,
 		},
+		KafkaConsumer: kafkaConsumer,
 	}
 }
