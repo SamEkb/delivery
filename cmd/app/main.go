@@ -49,9 +49,9 @@ func main() {
 		gormDb,
 	)
 
+	startKafkaConsumer(compositionRoot)
 	startCronJobs(compositionRoot)
 	startWebServer(compositionRoot, config.HttpPort)
-	startKafkaConsumer(compositionRoot)
 }
 
 func getConfigs() *cmd.Config {
