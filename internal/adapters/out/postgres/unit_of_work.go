@@ -20,6 +20,7 @@ type UnitOfWork struct {
 	trackedAggregates []ddd.AggregateRoot
 	courierRepository ports.CourierRepository
 	orderRepository   ports.OrderRepository
+	mediatr           ddd.Mediatr
 }
 
 func NewUnitOfWork(db *gorm.DB) (*UnitOfWork, error) {
@@ -86,6 +87,10 @@ func (uow *UnitOfWork) Commit(ctx context.Context) error {
 		return errs.NewDatabaseError("commit", "transaction", err)
 	}
 
+	if err := uow.publishDomainEvents(ctx); err != nil {
+		return err
+	}
+
 	commited = true
 	uow.clearTx()
 
@@ -103,4 +108,18 @@ func (uow *UnitOfWork) OrderRepository() ports.OrderRepository {
 func (uow *UnitOfWork) clearTx() {
 	uow.tx = nil
 	uow.trackedAggregates = nil
+}
+
+func (uow *UnitOfWork) publishDomainEvents(ctx context.Context) error {
+	for _, aggregate := range uow.trackedAggregates {
+		for _, event := range aggregate.GetDomainEvents() {
+			err := uow.mediatr.Publish(ctx, event)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			aggregate.ClearDomainEvents()
+		}
+	}
+	return nil
 }
