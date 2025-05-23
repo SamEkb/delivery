@@ -6,13 +6,17 @@ import (
 
 	"github.com/delivery/internal/adapters/in/http"
 	"github.com/delivery/internal/adapters/in/jobs"
-	"github.com/delivery/internal/adapters/in/kafka"
+	consumer "github.com/delivery/internal/adapters/in/kafka"
 	"github.com/delivery/internal/adapters/out/grpc/geo"
+	producer "github.com/delivery/internal/adapters/out/kafka"
 	"github.com/delivery/internal/adapters/out/postgres"
+	"github.com/delivery/internal/core/application/eventhandlers"
 	"github.com/delivery/internal/core/application/usecases/commands"
 	"github.com/delivery/internal/core/application/usecases/queries"
+	"github.com/delivery/internal/core/domain/model/order"
 	"github.com/delivery/internal/core/domain/service"
 	"github.com/delivery/internal/core/ports"
+	"github.com/delivery/internal/pkg/ddd"
 	"gorm.io/gorm"
 )
 
@@ -25,7 +29,10 @@ type CompositionRoot struct {
 	QueryHandlers   QueryHandlers
 	Servers         Servers
 	Jobs            Jobs
-	KafkaConsumer   kafka.BasketConfirmedConsumer
+	KafkaConsumer   consumer.BasketConfirmedConsumer
+	KafkaProducer   ports.OrderProducer
+	EventHandler    ddd.EventHandler
+	Mediatr         ddd.Mediatr
 }
 
 type DomainServices struct {
@@ -122,7 +129,7 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 	}
 
 	// Kafka Consumer
-	kafkaConsumer, err := kafka.NewConsumer(
+	kafkaConsumer, err := consumer.NewConsumer(
 		[]string{config.KafkaHost},
 		config.KafkaBasketConfirmedTopic,
 		config.KafkaConsumerGroup,
@@ -131,6 +138,26 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 	if err != nil {
 		log.Fatalf("failed to create kafka consumer: %v", err)
 	}
+
+	// Kafka Producer
+	kafkaProducer, err := producer.NewOrderStatusChangedProducer(
+		[]string{config.KafkaHost},
+		config.KafkaOrderChangedTopic,
+	)
+	if err != nil {
+		log.Fatalf("failed to create kafka producer: %v", err)
+	}
+
+	//Handler
+	handler, err := eventhandlers.NewOrderStatusChangedEventHandler(kafkaProducer)
+	if err != nil {
+		log.Fatalf("failed to create order status changed event handler: %v", err)
+	}
+
+	// Mediatr
+	mediatr := ddd.NewMediatr()
+	event := order.NewStatusChangedDomainEventWithoutData()
+	mediatr.Subscribe(handler, event)
 
 	// Servers
 	httpServer, err := http.NewServer(
@@ -170,5 +197,8 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 			HttpServer: httpServer,
 		},
 		KafkaConsumer: kafkaConsumer,
+		KafkaProducer: kafkaProducer,
+		EventHandler:  handler,
+		Mediatr:       mediatr,
 	}
 }

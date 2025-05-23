@@ -8,7 +8,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/delivery/internal/core/application/usecases/commands"
-	"github.com/delivery/internal/generated/messages/queues/basketconfirmedpb"
+	"github.com/delivery/internal/generated/events/queues/basketconfirmedpb"
 	"github.com/google/uuid"
 )
 
