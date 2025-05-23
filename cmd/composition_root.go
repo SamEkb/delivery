@@ -6,8 +6,8 @@ import (
 
 	"github.com/delivery/internal/adapters/in/http"
 	"github.com/delivery/internal/adapters/in/jobs"
+	"github.com/delivery/internal/adapters/in/kafka"
 	"github.com/delivery/internal/adapters/out/grpc/geo"
-	"github.com/delivery/internal/adapters/out/kafka"
 	"github.com/delivery/internal/adapters/out/postgres"
 	"github.com/delivery/internal/core/application/usecases/commands"
 	"github.com/delivery/internal/core/application/usecases/queries"
