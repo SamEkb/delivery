@@ -5,6 +5,7 @@ import (
 
 	"github.com/delivery/internal/core/domain/model/kernel"
 	"github.com/delivery/internal/core/domain/model/order"
+	"github.com/delivery/internal/pkg/errs"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -30,14 +31,14 @@ func TestNewCourier(t *testing.T) {
 			speed:    2,
 			location: validLocation,
 			wantErr:  true,
-			err:      ErrInvalidCourierName,
+			err:      errs.ErrValueIsRequired,
 		},
 		"invalid couriers speed": {
 			name:     "courier12",
 			speed:    0,
 			location: validLocation,
 			wantErr:  true,
-			err:      ErrInvalidSpeedValue,
+			err:      errs.ErrValueIsRequired,
 		},
 	}
 
@@ -92,7 +93,7 @@ func TestCourier_CanTakeOrder(t *testing.T) {
 			order:   nil,
 			result:  false,
 			wantErr: true,
-			err:     ErrInvalidOrder,
+			err:     errs.ErrValueIsRequired,
 		},
 	}
 
@@ -136,13 +137,13 @@ func TestCourier_TakeOrder(t *testing.T) {
 			order:    validOrder,
 			canStore: false,
 			wantErr:  true,
-			err:      ErrCanNotTakeOrder,
+			err:      errs.ErrBusiness,
 		},
 		"cant take, invalid order": {
 			order:    nil,
 			canStore: false,
 			wantErr:  true,
-			err:      ErrInvalidOrder,
+			err:      errs.ErrValueIsRequired,
 		},
 	}
 
@@ -182,7 +183,7 @@ func TestCourier_CompleteOrder(t *testing.T) {
 		"cant complete order, invalid order": {
 			order:   nil,
 			wantErr: true,
-			err:     ErrInvalidOrder,
+			err:     errs.ErrValueIsRequired,
 		},
 	}
 
