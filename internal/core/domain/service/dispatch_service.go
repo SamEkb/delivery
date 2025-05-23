@@ -1,15 +1,10 @@
 package service
 
 import (
-	"errors"
-
 	"github.com/delivery/internal/core/domain/model/courier"
 	"github.com/delivery/internal/core/domain/model/order"
+	"github.com/delivery/internal/pkg/errs"
 )
-
-var ErrInvalidOrder = errors.New("order must not be nil and must be in Created status")
-var ErrInvalidCouriers = errors.New("couriers must not be nil")
-var ErrCourierNotFound = errors.New("courier not found")
 
 type DispatchService interface {
 	Dispatch(order *order.Order, couriers []*courier.Courier) (*courier.Courier, error)
@@ -24,11 +19,11 @@ func NewDispatchService() DispatchService {
 
 func (d *dispatchService) Dispatch(orderParam *order.Order, couriers []*courier.Courier) (*courier.Courier, error) {
 	if orderParam == nil || orderParam.Status() != order.Created {
-		return nil, ErrInvalidOrder
+		return nil, errs.NewValidationError("order", "order is not created")
 	}
 
 	if couriers == nil || len(couriers) == 0 {
-		return nil, ErrInvalidCouriers
+		return nil, errs.NewValidationError("couriers", "couriers not found")
 	}
 
 	bestCourier, err := findNearestSuitableCourier(orderParam, couriers)
@@ -37,7 +32,7 @@ func (d *dispatchService) Dispatch(orderParam *order.Order, couriers []*courier.
 	}
 
 	if bestCourier == nil {
-		return nil, ErrCourierNotFound
+		return nil, errs.NewValidationError("couriers", "no suitable couriers found")
 	}
 
 	courierID := bestCourier.ID()

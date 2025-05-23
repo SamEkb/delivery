@@ -49,6 +49,7 @@ func main() {
 		gormDb,
 	)
 
+	startKafkaConsumer(compositionRoot)
 	startCronJobs(compositionRoot)
 	startWebServer(compositionRoot, config.HttpPort)
 }
@@ -180,4 +181,12 @@ func startCronJobs(compositionRoot cmd.CompositionRoot) {
 	}
 
 	c.Start()
+}
+
+func startKafkaConsumer(compositionRoot cmd.CompositionRoot) {
+	go func() {
+		if err := compositionRoot.KafkaConsumer.Consume(); err != nil {
+			log.Fatalf("Kafka consumer error: %v", err)
+		}
+	}()
 }
