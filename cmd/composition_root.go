@@ -67,7 +67,8 @@ type Jobs struct {
 }
 
 func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
-	unitOfWork, err := postgres.NewUnitOfWork(gormDb)
+	mediatr := ddd.NewMediatr()
+	unitOfWork, err := postgres.NewUnitOfWork(gormDb, mediatr)
 	if err != nil {
 		log.Fatalf("failed to create unit of work: %v", err)
 	}
@@ -155,7 +156,6 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 	}
 
 	// Mediatr
-	mediatr := ddd.NewMediatr()
 	event := order.NewStatusChangedDomainEventWithoutData()
 	mediatr.Subscribe(handler, event)
 

@@ -23,13 +23,17 @@ type UnitOfWork struct {
 	mediatr           ddd.Mediatr
 }
 
-func NewUnitOfWork(db *gorm.DB) (*UnitOfWork, error) {
+func NewUnitOfWork(db *gorm.DB, mediatr ddd.Mediatr) (*UnitOfWork, error) {
 	if db == nil {
 		return nil, errs.NewValueIsRequiredError("database")
 	}
+	if mediatr == nil {
+		return nil, errs.NewValueIsRequiredError("mediatr")
+	}
 
 	uow := &UnitOfWork{
-		db: db,
+		db:      db,
+		mediatr: mediatr,
 	}
 
 	courierRepo, err := courierrepo.NewRepository(uow)
