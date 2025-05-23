@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/delivery/internal/core/domain/model/kernel"
+	"github.com/delivery/internal/pkg/errs"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,21 +28,21 @@ func TestNewOrder(t *testing.T) {
 			location: mustCreateLocation(1, 1),
 			volume:   1,
 			wantErr:  true,
-			err:      ErrInvalidOrderId,
+			err:      errs.ErrValueIsRequired,
 		},
 		"invalid order volume 0": {
 			orderID:  uuid.New(),
 			location: mustCreateLocation(1, 1),
 			volume:   0,
 			wantErr:  true,
-			err:      ErrInvalidOrderVolume,
+			err:      errs.ErrValueIsRequired,
 		},
 		"invalid order volume negative": {
 			orderID:  uuid.New(),
 			location: mustCreateLocation(1, 1),
 			volume:   -1,
 			wantErr:  true,
-			err:      ErrInvalidOrderVolume,
+			err:      errs.ErrValueIsRequired,
 		},
 	}
 
@@ -82,7 +83,7 @@ func TestOrder_Assign(t *testing.T) {
 			courierId: nil,
 			status:    Created,
 			wantErr:   true,
-			err:       ErrInvalidCourierId,
+			err:       errs.ErrValueIsRequired,
 		},
 	}
 
@@ -127,7 +128,7 @@ func TestOrder_Complete(t *testing.T) {
 			courierId: nil,
 			status:    Created,
 			wantErr:   true,
-			err:       ErrCourierWasNotAssign,
+			err:       errs.ErrBusiness,
 		},
 	}
 

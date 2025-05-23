@@ -12,5 +12,7 @@ protoc --go_out=./internal/generated/clients --go-grpc_out=./internal/generated/
 
 ### kafka message generation command
 ```
-protoc --go_out=./internal/generated/messages ./api/proto/basket_confirmed.proto
+protoc --go_out=./internal/generated/events ./api/proto/basket_confirmed.proto
+
+protoc --go_out=./internal/generated/events ./api/proto/order_status_changed.proto
 ```

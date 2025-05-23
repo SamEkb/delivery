@@ -1,22 +1,17 @@
 package courier
 
 import (
-	"errors"
 	"math"
 
 	"github.com/delivery/internal/core/domain/model/kernel"
 	"github.com/delivery/internal/core/domain/model/order"
+	"github.com/delivery/internal/pkg/ddd"
+	"github.com/delivery/internal/pkg/errs"
 	"github.com/google/uuid"
 )
 
-var ErrInvalidCourierName = errors.New("courier's name should not be empty")
-var ErrInvalidSpeedValue = errors.New("speed must be greater than 0")
-var ErrInvalidOrder = errors.New("order can't be null")
-var ErrCanNotTakeOrder = errors.New("can't take order, all storage places are occupied")
-var ErrOrderNotFound = errors.New("order not found in any storage place")
-
 type Courier struct {
-	id            uuid.UUID
+	*ddd.BaseAggregate[uuid.UUID]
 	name          string
 	speed         int
 	location      kernel.Location
@@ -25,15 +20,16 @@ type Courier struct {
 
 func NewCourier(name string, speed int, location kernel.Location) (*Courier, error) {
 	if name == "" {
-		return nil, ErrInvalidCourierName
+		return nil, errs.NewValueIsRequiredError("courier name")
 	}
 
 	if speed <= 0 {
-		return nil, ErrInvalidSpeedValue
+		return nil, errs.NewValueIsRequiredError("courier speed")
 	}
 
+	courierID := uuid.New()
 	return &Courier{
-		id:            uuid.New(),
+		BaseAggregate: ddd.NewBaseAggregate[uuid.UUID](courierID),
 		name:          name,
 		speed:         speed,
 		location:      location,
@@ -43,7 +39,7 @@ func NewCourier(name string, speed int, location kernel.Location) (*Courier, err
 
 func RestoreCourier(id uuid.UUID, name string, speed int, location kernel.Location, storagePlaces []*StoragePlace) *Courier {
 	return &Courier{
-		id:            id,
+		BaseAggregate: ddd.NewBaseAggregate[uuid.UUID](id),
 		name:          name,
 		speed:         speed,
 		location:      location,
@@ -55,7 +51,7 @@ func (c *Courier) Equals(other *Courier) bool {
 	if other == nil {
 		return false
 	}
-	return c.id == other.id
+	return c.BaseAggregate.ID() == other.BaseAggregate.ID()
 }
 
 func (c *Courier) AddStoragePlace(name string, volume int) error {
@@ -71,7 +67,7 @@ func (c *Courier) AddStoragePlace(name string, volume int) error {
 
 func (c *Courier) CanTakeOrder(order *order.Order) (bool, error) {
 	if order == nil {
-		return false, ErrInvalidOrder
+		return false, errs.NewValueIsRequiredError("order")
 	}
 
 	for _, v := range c.storagePlaces {
@@ -86,7 +82,7 @@ func (c *Courier) CanTakeOrder(order *order.Order) (bool, error) {
 
 func (c *Courier) TakeOrder(order *order.Order) error {
 	if order == nil {
-		return ErrInvalidOrder
+		return errs.NewValueIsRequiredError("order")
 	}
 
 	canTake, err := c.CanTakeOrder(order)
@@ -95,7 +91,7 @@ func (c *Courier) TakeOrder(order *order.Order) error {
 	}
 
 	if !canTake {
-		return ErrCanNotTakeOrder
+		return errs.NewBusinessError("courier can't take order", "can't take order")
 	}
 
 	for _, v := range c.storagePlaces {
@@ -111,12 +107,12 @@ func (c *Courier) TakeOrder(order *order.Order) error {
 
 	}
 
-	return ErrCanNotTakeOrder
+	return errs.NewBusinessError("courier can't take order", "all storage places are occupied")
 }
 
 func (c *Courier) CompleteOrder(order *order.Order) error {
 	if order == nil {
-		return ErrInvalidOrder
+		return errs.NewValueIsRequiredError("order")
 	}
 
 	if err := order.Complete(); err != nil {
@@ -178,11 +174,11 @@ func (c *Courier) findStoragePlaceByOrderID(orderID uuid.UUID) (*StoragePlace, e
 		}
 	}
 
-	return nil, ErrOrderNotFound
+	return nil, errs.NewBusinessError("courier can't take order", "order is not stored here")
 }
 
 func (c *Courier) ID() uuid.UUID {
-	return c.id
+	return c.BaseAggregate.ID()
 }
 
 func (c *Courier) Name() string {

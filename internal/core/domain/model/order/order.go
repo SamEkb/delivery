@@ -1,19 +1,15 @@
 package order
 
 import (
-	"errors"
-
 	"github.com/delivery/internal/core/domain/model/kernel"
+	"github.com/delivery/internal/pkg/ddd"
+	"github.com/delivery/internal/pkg/errs"
 	"github.com/google/uuid"
 )
 
-var ErrInvalidOrderId = errors.New("order id must not be Empty")
-var ErrInvalidOrderVolume = errors.New("volume order should be greater than zero")
-var ErrInvalidCourierId = errors.New("courier id must not be Empty")
-var ErrCourierWasNotAssign = errors.New("can't complete the order, courier was not Assigned")
-
 type Order struct {
-	id        uuid.UUID
+	*ddd.BaseAggregate[uuid.UUID]
+
 	courierID *uuid.UUID
 	location  kernel.Location
 	volume    int
@@ -22,36 +18,36 @@ type Order struct {
 
 func NewOrder(orderID uuid.UUID, location kernel.Location, volume int) (*Order, error) {
 	if orderID == uuid.Nil {
-		return nil, ErrInvalidOrderId
+		return nil, errs.NewValueIsRequiredError("order id")
 	}
 
 	if volume <= 0 {
-		return nil, ErrInvalidOrderVolume
+		return nil, errs.NewValueIsRequiredError("volume")
 	}
 
 	return &Order{
-		id:        orderID,
-		courierID: nil,
-		location:  location,
-		volume:    volume,
-		status:    Created,
+		BaseAggregate: ddd.NewBaseAggregate[uuid.UUID](orderID),
+		courierID:     nil,
+		location:      location,
+		volume:        volume,
+		status:        Created,
 	}, nil
 }
 
 // RestoreOrder must be used ONLY in a repository layer for mapping
 func RestoreOrder(orderID uuid.UUID, courierID *uuid.UUID, location kernel.Location, volume int, status Status) *Order {
 	return &Order{
-		id:        orderID,
-		courierID: courierID,
-		location:  location,
-		volume:    volume,
-		status:    status,
+		BaseAggregate: ddd.NewBaseAggregate[uuid.UUID](orderID),
+		courierID:     courierID,
+		location:      location,
+		volume:        volume,
+		status:        status,
 	}
 }
 
 func (o *Order) Assign(courierId *uuid.UUID) error {
 	if courierId == nil {
-		return ErrInvalidCourierId
+		return errs.NewValueIsRequiredError("courier id")
 	}
 
 	o.courierID = courierId
@@ -62,20 +58,26 @@ func (o *Order) Assign(courierId *uuid.UUID) error {
 
 func (o *Order) Complete() error {
 	if o.courierID == nil {
-		return ErrCourierWasNotAssign
+		return errs.NewBusinessError("order is not assigned to courier", "courier id is nil")
 	}
 
 	o.status = Completed
+
+	domainEvent, err := NewStatusChangedDomainEvent(o.ID(), "", o)
+	if err != nil {
+		return err
+	}
+	o.BaseAggregate.RaiseDomainEvent(domainEvent)
 
 	return nil
 }
 
 func (o *Order) Equals(other *Order) bool {
-	return o.id == other.id
+	return o.BaseAggregate.ID() == other.BaseAggregate.ID()
 }
 
 func (o *Order) ID() uuid.UUID {
-	return o.id
+	return o.BaseAggregate.ID()
 }
 
 func (o *Order) CourierID() *uuid.UUID {
