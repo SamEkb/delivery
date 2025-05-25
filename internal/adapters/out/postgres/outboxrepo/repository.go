@@ -39,7 +39,7 @@ func (r *repository) Update(ctx context.Context, message *outbox.Event) error {
 func (r *repository) GetNotPublishedEvents() ([]*outbox.Event, error) {
 	var events []*outbox.Event
 	if err := r.db.WithContext(context.Background()).
-		Order("created_at_utc ASC").
+		Order("occurred_at_utc ASC").
 		Limit(20).
 		Where("processed_at_utc IS NULL").
 		Find(&events).Error; err != nil {
