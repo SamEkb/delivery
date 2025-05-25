@@ -71,11 +71,13 @@ func (r *eventRegistry) DecodeDomainEvent(event *Event) (ddd.DomainEvent, error)
 		return nil, errs.NewNotFoundError("event", event.Name)
 	}
 
-	decodedEvent := reflect.New(eventType).Interface()
+	decodedEventPtr := reflect.New(eventType).Interface()
 
-	if err := json.Unmarshal(event.Payload, decodedEvent); err != nil {
+	if err := json.Unmarshal(event.Payload, decodedEventPtr); err != nil {
 		return nil, fmt.Errorf("failed to decode event: %w", err)
 	}
+
+	decodedEvent := reflect.ValueOf(decodedEventPtr).Elem().Interface()
 
 	domainEvent, ok := decodedEvent.(ddd.DomainEvent)
 	if !ok {

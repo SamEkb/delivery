@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"log"
+	"reflect"
 	"time"
 
 	"github.com/delivery/internal/adapters/in/http"
@@ -169,6 +170,10 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 	eventRegistry, err := outbox.NewEventRegistry()
 	if err != nil {
 		log.Fatalf("failed to create event registry: %v", err)
+	}
+
+	if err := eventRegistry.RegisterDomainEvent(reflect.TypeOf(event)); err != nil {
+		log.Fatalf("failed to register domain event: %v", err)
 	}
 
 	outboxJob, err := jobs.NewOutboxJob(outboxRepository, eventRegistry, mediatr)
