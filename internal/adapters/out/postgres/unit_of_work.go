@@ -2,12 +2,14 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
 	"github.com/delivery/internal/adapters/out/postgres/courierrepo"
 	"github.com/delivery/internal/adapters/out/postgres/orderrepo"
 	"github.com/delivery/internal/core/ports"
 	"github.com/delivery/internal/pkg/ddd"
 	"github.com/delivery/internal/pkg/errs"
+	"github.com/delivery/internal/pkg/outbox"
 	"github.com/labstack/gommon/log"
 	"gorm.io/gorm"
 )
@@ -86,13 +88,13 @@ func (uow *UnitOfWork) Commit(ctx context.Context) error {
 		}
 	}()
 
-	if err := uow.tx.WithContext(ctx).Commit().Error; err != nil && err != gorm.ErrInvalidTransaction {
-		log.Error(err)
-		return errs.NewDatabaseError("commit", "transaction", err)
+	if err := uow.saveDomainEvents(ctx, uow.tx); err != nil {
+		return err
 	}
 
-	if err := uow.publishDomainEvents(ctx); err != nil {
-		return err
+	if err := uow.tx.WithContext(ctx).Commit().Error; err != nil && !errors.Is(err, gorm.ErrInvalidTransaction) {
+		log.Error(err)
+		return errs.NewDatabaseError("commit", "transaction", err)
 	}
 
 	commited = true
@@ -114,16 +116,20 @@ func (uow *UnitOfWork) clearTx() {
 	uow.trackedAggregates = nil
 }
 
-func (uow *UnitOfWork) publishDomainEvents(ctx context.Context) error {
+func (uow *UnitOfWork) saveDomainEvents(ctx context.Context, tx *gorm.DB) error {
 	for _, aggregate := range uow.trackedAggregates {
-		for _, event := range aggregate.GetDomainEvents() {
-			err := uow.mediatr.Publish(ctx, event)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			aggregate.ClearDomainEvents()
+		events, err := outbox.EncodeDomainEvents(aggregate.GetDomainEvents())
+		if err != nil {
+			return err
 		}
+
+		if len(events) == 0 {
+			if err := tx.WithContext(ctx).Create(&events).Error; err != nil {
+				return errs.NewDatabaseError("save domain events", "events", err)
+			}
+		}
+
+		aggregate.ClearDomainEvents()
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/delivery/internal/adapters/out/grpc/geo"
 	producer "github.com/delivery/internal/adapters/out/kafka"
 	"github.com/delivery/internal/adapters/out/postgres"
+	"github.com/delivery/internal/adapters/out/postgres/outboxrepo"
 	"github.com/delivery/internal/core/application/eventhandlers"
 	"github.com/delivery/internal/core/application/usecases/commands"
 	"github.com/delivery/internal/core/application/usecases/queries"
@@ -17,6 +18,7 @@ import (
 	"github.com/delivery/internal/core/domain/service"
 	"github.com/delivery/internal/core/ports"
 	"github.com/delivery/internal/pkg/ddd"
+	"github.com/delivery/internal/pkg/outbox"
 	"gorm.io/gorm"
 )
 
@@ -64,6 +66,7 @@ type Servers struct {
 type Jobs struct {
 	AssignOrderJob jobs.AssignOrderJob
 	MoveCourierJob jobs.MoveCourierJob
+	OutboxJob      jobs.OutboxJob
 }
 
 func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
@@ -79,6 +82,10 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 	// Repositories
 	orderRepository := unitOfWork.OrderRepository()
 	courierRepository := unitOfWork.CourierRepository()
+	outboxRepository, err := outboxrepo.NewRepository(unitOfWork.Db())
+	if err != nil {
+		log.Fatalf("failed to create outbox repository: %v", err)
+	}
 
 	// Clients
 	geoClient, err := geo.NewGeoClient(config.GeoServiceGrpcHost, 5*time.Second)
@@ -159,6 +166,16 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 	event := order.NewStatusChangedDomainEventWithoutData()
 	mediatr.Subscribe(handler, event)
 
+	eventRegistry, err := outbox.NewEventRegistry()
+	if err != nil {
+		log.Fatalf("failed to create event registry: %v", err)
+	}
+
+	outboxJob, err := jobs.NewOutboxJob(outboxRepository, eventRegistry, mediatr)
+	if err != nil {
+		log.Fatalf("failed to create outbox job: %v", err)
+	}
+
 	// Servers
 	httpServer, err := http.NewServer(
 		assignOrderCommandHandler,
@@ -192,6 +209,7 @@ func NewCompositionRoot(config *Config, gormDb *gorm.DB) CompositionRoot {
 		Jobs: Jobs{
 			AssignOrderJob: *assignOrderJob,
 			MoveCourierJob: *moveCourierJob,
+			OutboxJob:      *outboxJob,
 		},
 		Servers: Servers{
 			HttpServer: httpServer,
