@@ -53,10 +53,6 @@ func EncodeDomainEvent(domainEvent ddd.DomainEvent) (Event, error) {
 }
 
 func EncodeDomainEvents(domainEvents []ddd.DomainEvent) ([]Event, error) {
-	if len(domainEvents) == 0 {
-		return nil, errs.NewValueIsRequiredError("domain events")
-	}
-
 	events := make([]Event, 0, len(domainEvents))
 	for _, domainEvent := range domainEvents {
 		event, err := EncodeDomainEvent(domainEvent)
@@ -70,10 +66,6 @@ func EncodeDomainEvents(domainEvents []ddd.DomainEvent) ([]Event, error) {
 }
 
 func (r *eventRegistry) DecodeDomainEvent(event *Event) (ddd.DomainEvent, error) {
-	if event == nil {
-		return nil, errs.NewValueIsRequiredError("event")
-	}
-
 	eventType, ok := r.events[event.Name]
 	if !ok {
 		return nil, errs.NewNotFoundError("event", event.Name)
