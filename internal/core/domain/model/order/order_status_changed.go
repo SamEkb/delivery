@@ -1,6 +1,8 @@
 package order
 
 import (
+	"reflect"
+
 	"github.com/delivery/internal/pkg/ddd"
 	"github.com/google/uuid"
 )
@@ -27,14 +29,18 @@ func (o *StatusChangedDomainEvent) GetName() string {
 	return o.Name
 }
 
-func NewStatusChangedDomainEvent(id uuid.UUID, name string, payload *Order) (*StatusChangedDomainEvent, error) {
-	return &StatusChangedDomainEvent{
-		ID:          id,
-		Name:        name,
-		OrderID:     payload.ID(),
-		OrderStatus: payload.Status(),
-		isValid:     true,
-	}, nil
+func NewStatusChangedDomainEvent(order *Order) (*StatusChangedDomainEvent, error) {
+	event := &StatusChangedDomainEvent{
+		ID: uuid.New(),
+
+		OrderID:     order.ID(),
+		OrderStatus: order.Status(),
+
+		isValid: true,
+	}
+	event.Name = reflect.TypeOf(event).Name()
+
+	return event, nil
 }
 
 func NewStatusChangedDomainEventWithoutData() *StatusChangedDomainEvent {

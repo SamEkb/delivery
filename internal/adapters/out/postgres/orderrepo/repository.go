@@ -2,6 +2,7 @@ package orderrepo
 
 import (
 	"context"
+	"errors"
 
 	"github.com/delivery/internal/core/domain/model/order"
 	"github.com/delivery/internal/core/ports"
@@ -108,7 +109,7 @@ func (r *Repository) GetFirstInStatusCreate(ctx context.Context) (*order.Order, 
 		First(&dto, "status = ?", order.Created)
 
 	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, errs.NewNotFoundError("order", "in created status")
 		}
 		return nil, errs.NewDatabaseError("get", "order", result.Error)

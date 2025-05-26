@@ -63,7 +63,7 @@ func (o *Order) Complete() error {
 
 	o.status = Completed
 
-	domainEvent, err := NewStatusChangedDomainEvent(o.ID(), "", o)
+	domainEvent, err := NewStatusChangedDomainEvent(o)
 	if err != nil {
 		return err
 	}

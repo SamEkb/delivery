@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/delivery/internal/generated/servers"
+	"github.com/delivery/internal/pkg/outbox"
 	_ "github.com/lib/pq"
 
 	"github.com/delivery/cmd"
@@ -155,6 +156,10 @@ func mustAutoMigrate(db *gorm.DB) {
 		log.Fatalf("Ошибка миграции: %v", err)
 	}
 
+	err = db.AutoMigrate(&outbox.Event{})
+	if err != nil {
+		log.Fatalf("Ошибка миграции: %v", err)
+	}
 }
 
 func startWebServer(compositionRoot cmd.CompositionRoot, port string) {
@@ -178,6 +183,10 @@ func startCronJobs(compositionRoot cmd.CompositionRoot) {
 	_, err = c.AddJob("* * * * * *", &compositionRoot.Jobs.MoveCourierJob)
 	if err != nil {
 		log.Fatalf("failed to add move courier job: %v", err)
+	}
+	_, err = c.AddJob("* * * * * *", &compositionRoot.Jobs.OutboxJob)
+	if err != nil {
+		log.Fatalf("failed to add outbox job: %v", err)
 	}
 
 	c.Start()
